@@ -1,6 +1,6 @@
 package com.ey.ejercicio_java.controller.dto.request;
 
-import com.ey.ejercicio_java.model.Phone;
+import com.ey.ejercicio_java.model.entity.Phone;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;

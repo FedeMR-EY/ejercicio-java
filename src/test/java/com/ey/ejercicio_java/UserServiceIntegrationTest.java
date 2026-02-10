@@ -1,7 +1,7 @@
 package com.ey.ejercicio_java;
 
-import com.ey.ejercicio_java.model.Phone;
-import com.ey.ejercicio_java.model.User;
+import com.ey.ejercicio_java.model.entity.Phone;
+import com.ey.ejercicio_java.model.entity.User;
 import com.ey.ejercicio_java.repository.PhoneRepository;
 import com.ey.ejercicio_java.repository.UserRepository;
 import com.ey.ejercicio_java.service.UserService;

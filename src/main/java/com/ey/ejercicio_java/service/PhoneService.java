@@ -1,6 +1,6 @@
 package com.ey.ejercicio_java.service;
 
-import com.ey.ejercicio_java.model.Phone;
+import com.ey.ejercicio_java.model.entity.Phone;
 import com.ey.ejercicio_java.repository.PhoneRepository;
 import org.springframework.stereotype.Service;
 

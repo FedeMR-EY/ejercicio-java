@@ -1,8 +1,7 @@
-package com.ey.ejercicio_java.model;
+package com.ey.ejercicio_java.model.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
