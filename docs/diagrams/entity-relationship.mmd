@@ -1,0 +1,25 @@
+---
+title: Diagrama Entidad-Relación - Ejercicio Java API
+---
+erDiagram
+    USERS {
+        UUID id PK "Identificador único del usuario"
+        VARCHAR name "Nombre completo"
+        VARCHAR email UK "Email único del usuario"
+        VARCHAR password "Contraseña encriptada (BCrypt)"
+        TIMESTAMP created_at "Fecha de creación"
+        TIMESTAMP modified_at "Fecha de última modificación"
+        TIMESTAMP last_login "Fecha de último login"
+        BOOLEAN is_active "Estado del usuario (activo/inactivo)"
+        TEXT access_token "Token JWT actual del usuario"
+    }
+
+    PHONES {
+        UUID id PK "Identificador único del teléfono"
+        VARCHAR number "Número de teléfono"
+        INTEGER city_code "Código de ciudad"
+        INTEGER country_code "Código de país"
+        UUID user_id FK "Referencia al usuario propietario"
+    }
+
+    USERS ||--o{ PHONES : "tiene"

@@ -1,0 +1,61 @@
+---
+title: Diagramas de Secuencia - Ejercicio Java API
+---
+sequenceDiagram
+    autonumber
+
+    %% =============================================
+    %% FLUJO DE REGISTRO DE USUARIO
+    %% =============================================
+
+    box rgb(230, 245, 255) Capa de Presentación
+        participant Client as Cliente
+        participant AuthController as AuthController
+    end
+
+    box rgb(255, 245, 230) Capa de Negocio
+        participant AuthBusiness as AuthBusinessService
+        participant JwtService as JwtService
+    end
+
+    box rgb(230, 255, 230) Capa de Datos
+        participant UserService as UserService
+        participant UserRepo as UserRepository
+    end
+
+    box rgb(255, 230, 245) Seguridad
+        participant PasswordEncoder as PasswordEncoder
+    end
+
+    rect rgb(240, 248, 255)
+        Note over Client,UserRepo: FLUJO DE REGISTRO (POST /users/v1/auth/register)
+
+        Client->>+AuthController: POST /v1/auth/register<br/>RegisterUserRequest
+        AuthController->>+AuthBusiness: registerUser(request)
+
+        AuthBusiness->>+UserService: existsByEmail(email)
+        UserService->>+UserRepo: existsByEmail(email)
+        UserRepo-->>-UserService: boolean
+        UserService-->>-AuthBusiness: boolean
+
+        alt Email ya existe
+            AuthBusiness-->>AuthController: throw APIException("El correo ya está registrado")
+            AuthController-->>Client: 400 Bad Request<br/>{"mensaje": "El correo ya está registrado"}
+        else Email disponible
+            AuthBusiness->>+PasswordEncoder: encode(password)
+            PasswordEncoder-->>-AuthBusiness: encodedPassword
+
+            Note over AuthBusiness: Crear entidad User<br/>con timestamps y datos
+
+            AuthBusiness->>+JwtService: generateToken(user)
+            JwtService-->>-AuthBusiness: JWT token
+
+            AuthBusiness->>+UserService: save(user)
+            UserService->>+UserRepo: save(user)
+            UserRepo-->>-UserService: savedUser
+            UserService-->>-AuthBusiness: savedUser
+
+            AuthBusiness-->>-AuthController: ResponseEntity(RegisterUserResponse, 201)
+            AuthController-->>-Client: 201 Created<br/>RegisterUserResponse
+        end
+    end

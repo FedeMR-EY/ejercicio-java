@@ -1,0 +1,76 @@
+---
+title: Diagrama de Secuencia - Validación JWT
+---
+sequenceDiagram
+    autonumber
+
+    box rgb(230, 245, 255) Cliente
+        participant Client as Cliente
+    end
+
+    box rgb(255, 230, 245) Seguridad
+        participant JwtFilter as JwtAuthenticationFilter
+        participant JwtService as JwtService
+        participant UserDetailsService as CustomUserDetailsService
+        participant SecurityContext as SecurityContextHolder
+    end
+
+    box rgb(230, 255, 230) Capa de Datos
+        participant UserService as UserService
+        participant UserRepo as UserRepository
+    end
+
+    box rgb(255, 245, 230) Controlador
+        participant Controller as Controlador Protegido
+    end
+
+    rect rgb(245, 245, 255)
+        Note over Client,Controller: VALIDACIÓN DE TOKEN JWT EN REQUEST PROTEGIDA
+
+        Client->>+JwtFilter: Request con Header<br/>Authorization: Bearer {token}
+
+        JwtFilter->>JwtFilter: Extraer token del header
+
+        alt Header no presente o no comienza con "Bearer "
+            JwtFilter->>Controller: filterChain.doFilter() [sin autenticación]
+            Controller-->>Client: 401 Unauthorized
+        else Token presente
+            JwtFilter->>+JwtService: extractUsername(token)
+
+            alt Token inválido o expirado
+                JwtService-->>JwtFilter: throw Exception
+                JwtFilter->>Controller: filterChain.doFilter() [sin autenticación]
+                Controller-->>Client: 401 Unauthorized
+            else Token válido
+                JwtService-->>-JwtFilter: email (username)
+
+                JwtFilter->>+UserDetailsService: loadUserByUsername(email)
+                UserDetailsService->>+UserService: findByEmail(email)
+                UserService->>+UserRepo: findByEmail(email)
+                UserRepo-->>-UserService: Optional<User>
+                UserService-->>-UserDetailsService: Optional<User>
+                UserDetailsService-->>-JwtFilter: UserDetails
+
+                JwtFilter->>+JwtService: isTokenValid(token, userDetails)
+
+                Note over JwtService: Validar:<br/>1. Username coincide<br/>2. Token no expirado
+
+                JwtService-->>-JwtFilter: boolean
+
+                alt Token no válido para usuario
+                    JwtFilter->>Controller: filterChain.doFilter() [sin autenticación]
+                    Controller-->>Client: 401 Unauthorized
+                else Token válido para usuario
+                    JwtFilter->>+SecurityContext: setAuthentication(authToken)
+                    SecurityContext-->>-JwtFilter: OK
+
+                    JwtFilter->>+Controller: filterChain.doFilter() [autenticado]
+
+                    Note over Controller: Procesar request<br/>con usuario autenticado
+
+                    Controller-->>-JwtFilter: Response
+                    JwtFilter-->>-Client: 200 OK + Response
+                end
+            end
+        end
+    end
