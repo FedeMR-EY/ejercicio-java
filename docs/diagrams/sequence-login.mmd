@@ -1,0 +1,77 @@
+---
+title: Diagrama de Secuencia - Login
+---
+sequenceDiagram
+    autonumber
+
+    box rgb(230, 245, 255) Capa de Presentación
+        participant Client as Cliente
+        participant AuthController as AuthController
+    end
+
+    box rgb(255, 245, 230) Capa de Negocio
+        participant AuthBusiness as AuthBusinessService
+        participant JwtService as JwtService
+    end
+
+    box rgb(230, 255, 230) Capa de Datos
+        participant UserService as UserService
+        participant UserRepo as UserRepository
+    end
+
+    box rgb(255, 230, 245) Seguridad
+        participant AuthManager as AuthenticationManager
+        participant UserDetailsService as CustomUserDetailsService
+    end
+
+    rect rgb(255, 250, 240)
+        Note over Client,UserRepo: FLUJO DE LOGIN (POST /users/v1/auth/login)
+
+        Client->>+AuthController: POST /v1/auth/login<br/>LoginRequest
+        AuthController->>+AuthBusiness: login(request)
+
+        AuthBusiness->>+AuthManager: authenticate(UsernamePasswordAuthenticationToken)
+
+        AuthManager->>+UserDetailsService: loadUserByUsername(email)
+        UserDetailsService->>+UserService: findByEmail(email)
+        UserService->>+UserRepo: findByEmail(email)
+        UserRepo-->>-UserService: Optional<User>
+        UserService-->>-UserDetailsService: Optional<User>
+
+        alt Usuario no encontrado
+            UserDetailsService-->>AuthManager: throw UsernameNotFoundException
+            AuthManager-->>AuthBusiness: throw BadCredentialsException
+            AuthBusiness-->>AuthController: throw APIException("Credenciales inválidas")
+            AuthController-->>Client: 400 Bad Request<br/>{"mensaje": "Credenciales inválidas"}
+        else Usuario encontrado
+            UserDetailsService-->>-AuthManager: UserDetails (User)
+
+            Note over AuthManager: Validar password<br/>con BCrypt
+
+            alt Password incorrecto
+                AuthManager-->>AuthBusiness: throw BadCredentialsException
+                AuthBusiness-->>AuthController: throw APIException("Credenciales inválidas")
+                AuthController-->>Client: 400 Bad Request<br/>{"mensaje": "Credenciales inválidas"}
+            else Password correcto
+                AuthManager-->>-AuthBusiness: Authentication
+
+                AuthBusiness->>+UserService: findByEmail(email)
+                UserService->>+UserRepo: findByEmail(email)
+                UserRepo-->>-UserService: Optional<User>
+                UserService-->>-AuthBusiness: Optional<User>
+
+                Note over AuthBusiness: Actualizar lastLogin
+
+                AuthBusiness->>+UserService: save(user)
+                UserService->>+UserRepo: save(user)
+                UserRepo-->>-UserService: savedUser
+                UserService-->>-AuthBusiness: savedUser
+
+                AuthBusiness->>+JwtService: generateToken(user)
+                JwtService-->>-AuthBusiness: JWT token
+
+                AuthBusiness-->>-AuthController: ResponseEntity(LoginResponse, 200)
+                AuthController-->>-Client: 200 OK<br/>LoginResponse
+            end
+        end
+    end

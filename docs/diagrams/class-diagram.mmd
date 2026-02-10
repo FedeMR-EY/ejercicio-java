@@ -1,0 +1,212 @@
+---
+title: Diagrama de Clases - Ejercicio Java API
+---
+classDiagram
+    direction TB
+
+    %% Interfaces
+    class AuthResource {
+        <<interface>>
+        +registerUser(RegisterUserRequest) ResponseEntity~RegisterUserResponse~
+        +login(LoginRequest) ResponseEntity~LoginResponse~
+    }
+
+    class DatabaseService~T~ {
+        <<interface>>
+        +save(T entity) T
+        +getAll() List~T~
+        +findById(UUID id) T
+        +deleteById(UUID id) void
+    }
+
+    class UserDetailsService {
+        <<interface>>
+        +loadUserByUsername(String username) UserDetails
+    }
+
+    class UserDetails {
+        <<interface>>
+        +getAuthorities() Collection~GrantedAuthority~
+        +getPassword() String
+        +getUsername() String
+        +isEnabled() boolean
+    }
+
+    %% Entidades
+    class User {
+        -UUID id
+        -String name
+        -String email
+        -String password
+        -List~Phone~ phones
+        -LocalDateTime createdAt
+        -LocalDateTime modifiedAt
+        -LocalDateTime lastLogin
+        -Boolean isActive
+        -String accessToken
+        +getAuthorities() Collection~GrantedAuthority~
+        +getUsername() String
+        +isEnabled() boolean
+    }
+
+    class Phone {
+        -UUID id
+        -String number
+        -Integer cityCode
+        -Integer countryCode
+        -User user
+    }
+
+    %% DTOs Request
+    class RegisterUserRequest {
+        <<record>>
+        +String name
+        +String email
+        +String password
+        +List~Phone~ phones
+    }
+
+    class LoginRequest {
+        <<record>>
+        +String email
+        +String password
+    }
+
+    %% DTOs Response
+    class RegisterUserResponse {
+        <<record>>
+        +UUID uuid
+        +LocalDate created
+        +LocalDate modified
+        +LocalDate lastLogin
+        +String token
+        +Boolean isActive
+    }
+
+    class LoginResponse {
+        <<record>>
+        +UUID id
+        +String name
+        +String email
+        +LocalDateTime lastLogin
+        +String token
+        +Boolean isActive
+    }
+
+    %% Controllers
+    class AuthController {
+        -AuthBusinessService authBusinessService
+        +registerUser(RegisterUserRequest) ResponseEntity~RegisterUserResponse~
+        +login(LoginRequest) ResponseEntity~LoginResponse~
+    }
+
+    %% Services
+    class AuthBusinessService {
+        -UserService userService
+        -PasswordEncoder passwordEncoder
+        -JwtService jwtService
+        -AuthenticationManager authenticationManager
+        +registerUser(RegisterUserRequest) ResponseEntity~RegisterUserResponse~
+        +login(LoginRequest) ResponseEntity~LoginResponse~
+    }
+
+    class UserService {
+        -UserRepository userRepository
+        +save(User entity) User
+        +getAll() List~User~
+        +findById(UUID id) User
+        +deleteById(UUID id) void
+        +findByEmail(String email) Optional~User~
+        +existsByEmail(String email) boolean
+    }
+
+    class CustomUserDetailsService {
+        -UserService userService
+        +loadUserByUsername(String email) UserDetails
+    }
+
+    class JwtService {
+        -String secretKey
+        -long jwtExpiration
+        +generateToken(UserDetails userDetails) String
+        +generateToken(Map claims, UserDetails userDetails) String
+        +extractUsername(String token) String
+        +isTokenValid(String token, UserDetails userDetails) boolean
+        -extractExpiration(String token) Date
+        -extractAllClaims(String token) Claims
+        -getSignInKey() SecretKey
+    }
+
+    %% Repositories
+    class UserRepository {
+        <<interface>>
+        +findByEmail(String email) Optional~User~
+        +existsByEmail(String email) boolean
+    }
+
+    class PhoneRepository {
+        <<interface>>
+    }
+
+    %% Security
+    class JwtAuthenticationFilter {
+        -JwtService jwtService
+        -CustomUserDetailsService customUserDetailsService
+        #doFilterInternal(HttpServletRequest, HttpServletResponse, FilterChain) void
+    }
+
+    class SecurityConfig {
+        -JwtAuthenticationFilter jwtAuthFilter
+        -CustomUserDetailsService customUserDetailsService
+        +securityFilterChain(HttpSecurity http) SecurityFilterChain
+        +passwordEncoder() PasswordEncoder
+        +authenticationProvider() AuthenticationProvider
+        +authenticationManager(AuthenticationConfiguration config) AuthenticationManager
+    }
+
+    %% Exceptions
+    class APIException {
+        -APIError apiError
+        +APIException(APIError apiError)
+        +getApiError() APIError
+    }
+
+    class APIError {
+        -String mensaje
+        +getMensaje() String
+    }
+
+    class AuthControllerAdvice {
+        +handleMethodArgumentNotValid() ResponseEntity~Object~
+        +handleAPIException(APIException ex) ResponseEntity~APIError~
+        +handleBadCredentialsException() ResponseEntity~APIError~
+        +handleUsernameNotFoundException() ResponseEntity~APIError~
+    }
+
+    %% Relaciones de implementacion
+    AuthController ..|> AuthResource : implements
+    UserService ..|> DatabaseService : implements
+    CustomUserDetailsService ..|> UserDetailsService : implements
+    User ..|> UserDetails : implements
+
+    %% Relaciones de herencia
+    APIException --|> RuntimeException : extends
+
+    %% Relaciones de composicion/agregacion
+    User "1" *-- "*" Phone : phones
+    APIException *-- APIError : contains
+
+    %% Relaciones de dependencia/uso
+    AuthController --> AuthBusinessService : uses
+    AuthBusinessService --> UserService : uses
+    AuthBusinessService --> JwtService : uses
+    AuthBusinessService --> PasswordEncoder : uses
+    AuthBusinessService --> AuthenticationManager : uses
+    UserService --> UserRepository : uses
+    CustomUserDetailsService --> UserService : uses
+    JwtAuthenticationFilter --> JwtService : uses
+    JwtAuthenticationFilter --> CustomUserDetailsService : uses
+    SecurityConfig --> JwtAuthenticationFilter : configures
+    SecurityConfig --> CustomUserDetailsService : configures
+    AuthControllerAdvice --> APIError : creates
+    AuthControllerAdvice ..> AuthController : advises
